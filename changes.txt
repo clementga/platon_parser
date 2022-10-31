@@ -1,0 +1,4 @@
+Multiline now also evaluates expressions like for single line matches.
+Newline character is removed in each multiline line
+
+%=@ ajouté

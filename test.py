@@ -2,8 +2,10 @@ from urllib.parse import ParseResult
 from dataclasses import asdict
 import parsers.pl
 
-testpath = 'platon_parser/test/test.pl'
+from get_location import get_location
 
-parser = parsers.pl.PLParser(testpath, 0)
+testpath = 'test/test.pl'
+
+parser = parsers.pl.PLParser(testpath, 0, 0, get_location)
 output = parser.parse()
 print(asdict(output))

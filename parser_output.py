@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Set, Tuple
 
 @dataclass
 class ParserOutput:
@@ -7,8 +7,9 @@ class ParserOutput:
     # Metadata
     path: str
     resource_id: int
+    user_id: int
     format: str
-    dependencies: Set[str] = field(default_factory=set)
+    dependencies: Set[Tuple[str, str]] = field(default_factory=set) # Tuples (path, alias)
     comments: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 

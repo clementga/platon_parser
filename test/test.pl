@@ -1,7 +1,12 @@
-title = hello
+test = "hello"
 
-author = it's a me
+@ test.pl [fichier.py]
 
-life.meaning = 42
+json %=@ test.json
 
-dic = {'a': 2, 'b': 'tranquille'}
+array ==
+[1,
+2, 3,
+
+4,5]
+==
