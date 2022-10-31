@@ -1,12 +1,13 @@
-test = "hello"
+testcases %@ tests.json
 
-@ test.pl [fichier.py]
-
-json %=@ test.json
-
-array ==
-[1,
-2, 3,
-
-4,5]
+title = Exercice
+statement ==
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+Morbi auctor nunc nisi. Donec eu felis sapien. 
+Nam porta libero nunc.
 ==
+
+formState =: CodeEditor
+formState.form.initialCode = print("Hello World")
+formState.form.tabSize = 4
+formState.form.language = python

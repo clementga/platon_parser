@@ -36,7 +36,7 @@ URL_LINE = re.compile(
 ONE_LINE = re.compile(
     KEY + r'(?P<operator>=|\%|\+|\-)\s*' + VALUE + COMMENT + r'?$')
 FROM_FILE_LINE = re.compile(
-    KEY + r'(?P<operator>=@|\+=@|\-=@|\%=@)\s*' + FILE + COMMENT + r'?$')
+    KEY + r'(?P<operator>=@|\+=@|\-=@|\%@|\+@|\-@)\s*' + FILE + COMMENT + r'?$')
 EXTENDS_LINE = re.compile(
     r'(extends|template)\s*=\s*' + FILE + COMMENT + r'?$')
 MULTI_LINE = re.compile(
@@ -96,11 +96,7 @@ class PLParser(Parser):
             if END_MULTI_LINE.match(line):
                 self.end_multi_line()
             else:
-                self.__multiline.current_value += line[:-1]
-        elif ONE_LINE.match(line):
-            self.one_line_match(ONE_LINE.match(line))
-        elif MULTI_LINE.match(line):
-            self.multi_line_match(MULTI_LINE.match(line))
+                self.__multiline.current_value += line[:-1] 
         elif EXTENDS_LINE.match(line):
             self.extends_line_match(EXTENDS_LINE.match(line))
         elif FROM_FILE_LINE.match(line):
@@ -113,6 +109,10 @@ class PLParser(Parser):
             self.dependency_line_match(DEPENDENCY_FILE_LINE.match(line))
         elif COMMENT_LINE.match(line):
             self.output.comments.append(COMMENT_LINE.match(line).group('comment'))
+        elif ONE_LINE.match(line):
+            self.one_line_match(ONE_LINE.match(line))
+        elif MULTI_LINE.match(line):
+            self.multi_line_match(MULTI_LINE.match(line))
         elif EMPTY_LINE.match(line):
             return
         else:
@@ -224,14 +224,14 @@ class PLParser(Parser):
             value = file.read()
             if op == '=@':
                 self.apply_expression_to_key(key, value, map_value)
-            elif op == '%=@':
+            elif op == '%@':
                 try:
                     self.apply_expression_to_key(key, json.loads(value), map_value)
                 except json.decoder.JSONDecodeError:
                     raise excp.ParserSyntaxError(self.path, self.__current_line, self.__line_number, 'File does not correspond to a valid JSON format.')
-            elif op == '+=@':
+            elif op in ('+=@', '+@'):
                 self.apply_expression_to_key(key, value, append_value, key_must_exist=True)
-            elif op == '-=@':
+            elif op in ('-=@', '-@'):
                 self.apply_expression_to_key(key, value, prepend_value, key_must_exist=True)
             else:
                 raise AssertionError
@@ -243,7 +243,22 @@ class PLParser(Parser):
     
 
     def component_line_match(self, match: re.Match) -> NoReturn:
-        pass
+        key = match.group('key')
+        component = match.group('component')
+        try:
+            namespace, nkey = get_namespace(self.output.data, key.split('.'))
+        except TypeError:
+            raise excp.ParserSemanticError(self.path, self.__current_line, self.__line_number, f'{key} does not correspond to a valid namespace')
+        
+        if component not in COMPONENT_SELECTORS: raise excp.ParserComponentNotFound(self.path, self.__current_line, self.__line_number, 'Component not found in line.')
+
+        if nkey in namespace:
+            self.output.warnings.append(f'Overwriting existing value {namespace[nkey]} at key {nkey}')
+
+        namespace[nkey] = {
+            'selector': COMPONENT_SELECTORS[component],
+            'form': {}
+        }
 
 
     def dependency_line_match(self, match: re.Match) -> NoReturn:

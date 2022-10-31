@@ -32,3 +32,8 @@ class ParserFileNotFound(ParserExceptionLine):
     """Represents failure to resolve to a file path in a parsed file"""
     def __init__(self, path: str, line: str, line_number: int, message: str = 'File not found'):
         super().__init__(path, line, line_number, message)
+
+class ParserComponentNotFound(ParserExceptionLine):
+    """Represents failure to find a component"""
+    def __init__(self, path: str, line: str, line_number: int, message: str = 'Component not found'):
+        super().__init__(path, line, line_number, message)
