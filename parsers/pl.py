@@ -7,21 +7,18 @@ if __name__ == '__main__':
 import re
 import json
 import os.path
-from typing import NoReturn, List, Tuple, Callable
+from typing import List, Tuple, Callable, Any, Dict
 from ast import literal_eval
 from dataclasses import dataclass
 
-import exceptions as excp
-from baseparser import Parser
-from parser_output import ParserOutput
-
-
+from parser_exceptions import *
+from utils import Parser, ParserOutput, ParserImport
 from components import COMPONENT_SELECTORS
 
 
 BAD_CHAR = r''.join(['/', ' ', '\t', '\n', ';', '#', '+', '&'])
 
- # .pl grammar
+# .pl grammar
 KEY = r'^(?P<key>[a-zA-Z_][a-zA-Z0-9_\.]*)\s*'
 COMMENT = r'(?P<comment>#.*)'
 VALUE = r'(?P<value>[^=@%#][^#]*?)\s*'
@@ -46,10 +43,14 @@ END_MULTI_LINE = re.compile(r'==\s*$')
 COMMENT_LINE = re.compile(r'\s*' + COMMENT + r'$')
 EMPTY_LINE = re.compile(r'\s*$')
 
+# Mandatory keys
+MANDATORY_KEYS = ['author', 'version', 'title', 'statement', 'formState']
+
 # Utility functions
-def map_value(n, k, v): n[k] = v
-def append_value(n, k, v): n[k] += v
-def prepend_value(n, k, v): n[k] = v + n[k]
+def map_value(n: Dict[str, Any], k: str, v: Any): n[k] = v
+def append_value(n: Dict[str, Any], k: str, v: Any): n[k] += v
+def prepend_value(n: Dict[str, Any], k: str, v: Any): n[k] = v + n[k]
+
 
 class PLParser(Parser):
     """Parser for .pl files"""
@@ -57,14 +58,15 @@ class PLParser(Parser):
     class Multiline():
         """Used to keep information about multiline parsing status"""
         ongoing: bool = False
-        current_key: str = None
-        current_op: str = None
-        current_value: any = None
-        starting_line: str = None
+        current_key: str = ''
+        current_op: str = ''
+        current_value: Any = None
+        starting_line: str = ''
         starting_line_number: int = 0
 
 
-    def __init__(self, path: str, resource_id: int, user_id: int, get_location: Callable[[str, str, int, int], str], inherited=tuple()):
+    def __init__(self, path: str, resource_id: int, user_id: int, get_location: Callable[[str, str, int, int], str], 
+                 inherited=tuple(), check_mandatory_keys=True):
         """
         Initializes PLParser instance
 
@@ -80,6 +82,7 @@ class PLParser(Parser):
         self.user_id = user_id
         self.get_location = get_location
         self.inherited = inherited + (self.path,)
+        self.check_mandatory_keys = check_mandatory_keys
         self.output = ParserOutput(path, resource_id, user_id, 'pl')
 
         self.__current_line = ''
@@ -99,10 +102,14 @@ class PLParser(Parser):
             self.parse_line(line)
             self.__line_number += 1
 
+        if self.check_mandatory_keys:
+            for key in MANDATORY_KEYS:
+                if key not in self.output.data: raise ParserMissingKey(self.path, key)
+
         return self.output
 
 
-    def parse_line(self, line: str) -> NoReturn:
+    def parse_line(self, line: str):
         """
         Parse the given line by calling the appropriate method according to regex matches.
 
@@ -124,7 +131,8 @@ class PLParser(Parser):
         elif DEPENDENCY_FILE_LINE.match(line):
             self.dependency_line_match(DEPENDENCY_FILE_LINE.match(line))
         elif COMMENT_LINE.match(line):
-            self.output.comments.append(COMMENT_LINE.match(line).group('comment'))
+            match = COMMENT_LINE.match(line)
+            if match is not None: self.output.comments.append(match.group('comment'))
         elif ONE_LINE.match(line):
             self.one_line_match(ONE_LINE.match(line))
         elif MULTI_LINE.match(line):
@@ -132,10 +140,10 @@ class PLParser(Parser):
         elif EMPTY_LINE.match(line):
             return
         else:
-            raise excp.ParserSyntaxError(self.path, line, self.__line_number, 'Line does not correspond to any defined pattern')
+            raise ParserSyntaxError(self.path, line, self.__line_number, 'Line does not correspond to any defined pattern')
         
 
-    def one_line_match(self, match: re.Match) -> NoReturn:
+    def one_line_match(self, match):
         """ 
         Maps value to key if operator is '=',
             appends on existing key is operator is '+',
@@ -156,7 +164,7 @@ class PLParser(Parser):
             try:
                 self.apply_expression_to_key(key, json.loads(value), map_value)
             except json.decoder.JSONDecodeError:
-                raise excp.ParserSyntaxError(self.path, self.__current_line, self.__line_number, 'Line does not correspond to a valid JSON format.')
+                raise ParserSyntaxError(self.path, self.__current_line, self.__line_number, 'Line does not correspond to a valid JSON format.')
         elif op == '+':
             self.apply_expression_to_key(key, value, append_value, key_must_exist=True)
         elif op == '-':
@@ -165,7 +173,7 @@ class PLParser(Parser):
             raise AssertionError
 
 
-    def multi_line_match(self, match: re.Match) -> NoReturn:
+    def multi_line_match(self, match):
         """
         Starts the proecss for matching a whole multiline block
         """
@@ -180,7 +188,7 @@ class PLParser(Parser):
         self.__multiline.starting_line = self.__current_line
 
 
-    def end_multi_line(self) -> NoReturn:
+    def end_multi_line(self):
         """
         Evaluates the complete multiline value and does the action given by the operator:
             == : maps value to key
@@ -198,7 +206,7 @@ class PLParser(Parser):
             try:
                 self.apply_expression_to_key(key, json.loads(value), map_value)
             except json.decoder.JSONDecodeError:
-                raise excp.ParserSyntaxError(self.path, value, self.__multiline.starting_line_number, 'Multiline does not correspond to a valid JSON format.')
+                raise ParserSyntaxError(self.path, value, self.__multiline.starting_line_number, 'Multiline does not correspond to a valid JSON format.')
         elif op == '+=':
             self.apply_expression_to_key(key, value, append_value, key_must_exist=True)
         elif op == '-=':
@@ -209,20 +217,20 @@ class PLParser(Parser):
         self.__multiline.ongoing = False
 
     
-    def extends_line_match(self, match: re.Match) -> NoReturn:
+    def extends_line_match(self, match):
         """
         Inheritance
         """
         path = self.get_path(match.group('file'))
         if path in self.inherited:
-            raise excp.ParserInheritanceLoopError(self.path, self.inherited)
+            raise ParserInheritanceLoopError(self.path, self.inherited)
         
-        parser = PLParser(path, self.resource_id, self.user_id, self.get_location, self.inherited)
+        parser = PLParser(path, self.resource_id, self.user_id, self.get_location, self.inherited, check_mandatory_keys=False)
         output = parser.parse()
         self.output.merge_output(output)
 
         
-    def from_file_line_match(self, match: re.Match) -> NoReturn:
+    def from_file_line_match(self, match):
         """
         Loads file content into key
         """
@@ -238,7 +246,7 @@ class PLParser(Parser):
                 try:
                     self.apply_expression_to_key(key, json.loads(value), map_value)
                 except json.decoder.JSONDecodeError:
-                    raise excp.ParserSyntaxError(self.path, self.__current_line, self.__line_number, 'File does not correspond to a valid JSON format.')
+                    raise ParserSyntaxError(self.path, self.__current_line, self.__line_number, 'File does not correspond to a valid JSON format.')
             elif op in ('+=@', '+@'):
                 self.apply_expression_to_key(key, value, append_value, key_must_exist=True)
             elif op in ('-=@', '-@'):
@@ -247,12 +255,12 @@ class PLParser(Parser):
                 raise AssertionError
 
 
-    def url_line_match(self, match: re.Match) -> NoReturn:
+    def url_line_match(self, match):
         """Not implemented"""
-        raise excp.ParserNotImplementedError('Import from URL is not implemented currently')
+        raise ParserNotImplementedError(self.path, self.__current_line, self.__line_number, 'Import from URL is not implemented currently')
     
 
-    def component_line_match(self, match: re.Match) -> NoReturn:
+    def component_line_match(self, match):
         """
         Creates a dictionary corresponding to a component
         """
@@ -261,9 +269,9 @@ class PLParser(Parser):
         try:
             namespace, nkey = get_namespace(self.output.data, key.split('.'))
         except TypeError:
-            raise excp.ParserSemanticError(self.path, self.__current_line, self.__line_number, f'{key} does not correspond to a valid namespace')
+            raise ParserSemanticError(self.path, self.__current_line, self.__line_number, f'{key} does not correspond to a valid namespace')
         
-        if component not in COMPONENT_SELECTORS: raise excp.ParserComponentNotFound(self.path, self.__current_line, self.__line_number, 'Component not found in line.')
+        if component not in COMPONENT_SELECTORS: raise ParserComponentNotFound(self.path, self.__current_line, self.__line_number, 'Component not found in line.')
 
         if nkey in namespace:
             self.output.warnings.append(f'Overwriting existing value {namespace[nkey]} at key {nkey}')
@@ -274,7 +282,7 @@ class PLParser(Parser):
         }
 
 
-    def dependency_line_match(self, match: re.Match) -> NoReturn:
+    def dependency_line_match(self, match):
         """
         Adds a file to the dependencies to load in the sandbox environnement
         """
@@ -284,7 +292,7 @@ class PLParser(Parser):
         self.output.dependencies.add((path, alias))
 
 
-    def apply_expression_to_key(self, key: str, expr: str, apply: Callable[[str, str, any], NoReturn], key_must_exist:bool=False) -> NoReturn:
+    def apply_expression_to_key(self, key: str, expr: str, apply: Callable[[Dict[str, Any], str, Any], None], key_must_exist:bool=False):
         """Evaluates expr like a Python expression and applies it to the corresponding key
         in the data section of the output using the given callable. If the expression is invalid, it is evaluated
         as a string directly
@@ -297,21 +305,22 @@ class PLParser(Parser):
         try:
             namespace, nkey = get_namespace(self.output.data, key.split('.'))
         except TypeError:
-            raise excp.ParserSemanticError(self.path, current_line, line_number, f'{key} does not correspond to a valid namespace')
+            raise ParserSemanticError(self.path, current_line, line_number, f'{key} does not correspond to a valid namespace')
         if nkey in namespace:
             self.output.warnings.append(f'Overwriting existing value {namespace[nkey]} at key {nkey}')
         if key_must_exist and key not in namespace: 
-            raise excp.ParserSemanticError(self.path, current_line, line_number, f'{key} does not already exist')
+            raise ParserSemanticError(self.path, current_line, line_number, f'{key} does not already exist')
         try:
             value = literal_eval(expr)
         except (ValueError, TypeError, SyntaxError):
             value = expr
         apply(namespace, nkey, value)
 
+
     def get_path(self, path: str):
         """Finds real path to a file given pl path"""
         path = self.get_location(path, self.dir, self.resource_id, self.user_id)
-        if not path: raise excp.ParserFileNotFound(self.path, self.__current_line, self.__line_number, 'File path could not be resolved')
+        if not path: raise ParserFileNotFound(self.path, self.__current_line, self.__line_number, 'File path could not be resolved')
         return path
   
 
@@ -330,5 +339,6 @@ def get_namespace(d: dict, keys: List[str]) -> Tuple[dict, str]:
     return d, keys[-1]
 
 
-if __name__ == '__main__':
-    pass
+def get_parser() -> ParserImport:
+    """ Used to dynamicaly add parser to the loader"""
+    return ParserImport(PLParser, 'pl', ('.pl',))

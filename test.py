@@ -3,7 +3,7 @@ from dataclasses import asdict
 import parsers.pl
 import json
 
-from get_location import get_location
+from utils import base_get_location
 
 class SetEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -13,7 +13,7 @@ class SetEncoder(json.JSONEncoder):
 
 testpath = 'test/test.pl'
 
-parser = parsers.pl.PLParser(testpath, 0, 0, get_location)
+parser = parsers.pl.PLParser(testpath, 0, 0, base_get_location, check_mandatory_keys=False)
 output = parser.parse()
 
 

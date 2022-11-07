@@ -1,6 +1,24 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Set, Tuple
+from abc import ABC, abstractmethod
+
+import os.path
+
+def base_get_location(path_to_resolve: str, local_path: str, resource_id: int, user_id: int) -> str:
+    """Simple get_location function, only manages "classic" absolute and relative paths"""
+    if os.path.isabs(path_to_resolve):
+        return path_to_resolve
+    return os.path.abspath(os.path.join(local_path, path_to_resolve))
+
+
+class Parser(ABC):
+    """Abstract class representing a parser"""
+    @abstractmethod
+    def parse(self) -> ParserOutput:
+        """Parses the file and returns the output of that parse"""
+        pass
+
 
 @dataclass
 class ParserOutput:
@@ -34,3 +52,11 @@ def recursive_update(curr_dict: dict, merge_dict: dict):
                 recursive_update(curr_dict[key], value)
             else:
                 curr_dict[key] = value
+
+
+@dataclass
+class ParserImport:
+    """Used to import a parser from a file"""
+    parser: type[Parser]
+    file_type: str
+    extensions: Tuple[str]

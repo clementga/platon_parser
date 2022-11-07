@@ -46,3 +46,12 @@ class ParserInheritanceLoopError(ParserException):
     
     def __str__(self):
         return f'{self.path}: Infinite inheritance loop detected, inheritance traceback is:' + ', '.join(self.inheritances)
+    
+class ParserMissingKey(ParserException):
+    """Represents missing mandatory key"""
+    def __init__(self, path: str, key: str):
+        self.path = path
+        self.key = key
+    
+    def __str__(self):
+        return f'{self.path}: expected key {self.key} is missing'
