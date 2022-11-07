@@ -46,6 +46,11 @@ END_MULTI_LINE = re.compile(r'==\s*$')
 COMMENT_LINE = re.compile(r'\s*' + COMMENT + r'$')
 EMPTY_LINE = re.compile(r'\s*$')
 
+# Utility functions
+def map_value(n, k, v): n[k] = v
+def append_value(n, k, v): n[k] += v
+def prepend_value(n, k, v): n[k] = v + n[k]
+
 class PLParser(Parser):
     """Parser for .pl files"""
     @dataclass
@@ -59,12 +64,22 @@ class PLParser(Parser):
         starting_line_number: int = 0
 
 
-    def __init__(self, path: str, resource_id: int, user_id: int, get_location: Callable[[str, str, int, int], str]):
-        self.path = path
+    def __init__(self, path: str, resource_id: int, user_id: int, get_location: Callable[[str, str, int, int], str], inherited=tuple()):
+        """
+        Initializes PLParser instance
+
+        path: path to the file being parsed
+        resource_id: id of the resource the file is located in
+        user_id: id of the user asking for the parse
+        get_location: functions used to translate a URI into an absolute path on the system
+        inherited: set indicating the inheritance chain that lead to this file being parsed
+        """
+        self.path = os.path.abspath(path)
         self.dir, self.filename = os.path.split(path)
         self.resource_id = resource_id
         self.user_id = user_id
         self.get_location = get_location
+        self.inherited = inherited + (self.path,)
         self.output = ParserOutput(path, resource_id, user_id, 'pl')
 
         self.__current_line = ''
@@ -75,6 +90,7 @@ class PLParser(Parser):
     def parse(self) -> ParserOutput:
         """Parses the file and returns the corresponding output"""
 
+        # Read all file into RAM to avoid having too many file descriptors open during recursive parsing
         with open(self.path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
 
@@ -130,10 +146,6 @@ class PLParser(Parser):
             if no group 'value', 'key' or 'operator' was found
             if operator is '%' and value isn't a well formated json
         """
-        def map_value(n, k, v): n[k] = v
-        def append_value(n, k, v): n[k] += v
-        def prepend_value(n, k, v): n[k] = v + n[k]
-
         value = match.group('value')
         key = match.group('key')
         op = match.group('operator')
@@ -176,10 +188,6 @@ class PLParser(Parser):
             -= : prepends value to key
             %= : interprets value as JSON and maps to key
         """
-        def map_value(n, k, v): n[k] = v
-        def append_value(n, k, v): n[k] += v
-        def prepend_value(n, k, v): n[k] = v + n[k]
-
         op = self.__multiline.current_op
         key = self.__multiline.current_key
         value = self.__multiline.current_value
@@ -205,17 +213,19 @@ class PLParser(Parser):
         """
         Inheritance
         """
-        pass
+        path = self.get_path(match.group('file'))
+        if path in self.inherited:
+            raise excp.ParserInheritanceLoopError(self.path, self.inherited)
+        
+        parser = PLParser(path, self.resource_id, self.user_id, self.get_location, self.inherited)
+        output = parser.parse()
+        self.output.merge_output(output)
 
-
+        
     def from_file_line_match(self, match: re.Match) -> NoReturn:
         """
         Loads file content into key
         """
-        def map_value(n, k, v): n[k] = v
-        def append_value(n, k, v): n[k] += v
-        def prepend_value(n, k, v): n[k] = v + n[k]
-
         key = match.group('key')
         op = match.group('operator')
         path = self.get_path(match.group('file'))
@@ -243,6 +253,9 @@ class PLParser(Parser):
     
 
     def component_line_match(self, match: re.Match) -> NoReturn:
+        """
+        Creates a dictionary corresponding to a component
+        """
         key = match.group('key')
         component = match.group('component')
         try:

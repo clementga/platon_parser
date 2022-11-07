@@ -1,6 +1,7 @@
-testcases %@ tests.json
+override=success
 
-title = Exercice
+extends=inheritance.pl
+
 statement ==
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
 Morbi auctor nunc nisi. Donec eu felis sapien. 

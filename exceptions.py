@@ -37,3 +37,12 @@ class ParserComponentNotFound(ParserExceptionLine):
     """Represents failure to find a component"""
     def __init__(self, path: str, line: str, line_number: int, message: str = 'Component not found'):
         super().__init__(path, line, line_number, message)
+
+class ParserInheritanceLoopError(ParserException):
+    """Represents error caused by an infinite inheritance loop"""
+    def __init__(self, path: str, inheritances: tuple):
+        self.inheritances = inheritances
+        self.path = path
+    
+    def __str__(self):
+        return f'{self.path}: Infinite inheritance loop detected, inheritance traceback is:' + ', '.join(self.inheritances)
