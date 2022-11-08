@@ -1,9 +1,9 @@
-from urllib.parse import ParseResult
 from dataclasses import asdict
-import parsers.pl
 import json
 
+from parser import parse_file
 from utils import base_get_location
+
 
 class SetEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -11,10 +11,9 @@ class SetEncoder(json.JSONEncoder):
             return list(obj)
         return json.JSONEncoder.default(self, obj)
 
-testpath = 'test/test.pl'
+testpath = 'test/blah.pl'
 
-parser = parsers.pl.PLParser(testpath, 0, 0, base_get_location, check_mandatory_keys=False)
-output = parser.parse()
+output = parse_file(testpath, 0, 0, base_get_location)
 
 
 print(json.dumps(asdict(output), indent=2, cls=SetEncoder))

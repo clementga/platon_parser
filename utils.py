@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple, Callable
 from abc import ABC, abstractmethod
 
 import os.path
@@ -14,6 +14,11 @@ def base_get_location(path_to_resolve: str, local_path: str, resource_id: int, u
 
 class Parser(ABC):
     """Abstract class representing a parser"""
+    @abstractmethod
+    def __init__(self, path: str, resource_id: int, user_id: int, get_location: Callable[[str, str, int, int], str], 
+                 inherited=tuple(), check_mandatory_keys=True):
+        pass
+
     @abstractmethod
     def parse(self) -> ParserOutput:
         """Parses the file and returns the output of that parse"""

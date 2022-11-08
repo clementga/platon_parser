@@ -341,4 +341,4 @@ def get_namespace(d: dict, keys: List[str]) -> Tuple[dict, str]:
 
 def get_parser() -> ParserImport:
     """ Used to dynamicaly add parser to the loader"""
-    return ParserImport(PLParser, 'pl', ('.pl',))
+    return ParserImport(PLParser, 'pl', ('pl',))

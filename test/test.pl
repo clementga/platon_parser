@@ -1,3 +1,5 @@
+extends=base.pl
+
 override=success
 
 extends=inheritance.pl
