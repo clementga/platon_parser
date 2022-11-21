@@ -11,9 +11,9 @@ from typing import List, Tuple, Callable, Any, Dict
 from ast import literal_eval
 from dataclasses import dataclass
 
-from parser_exceptions import *
-from utils import Parser, ParserOutput, ParserImport
-from components import COMPONENT_SELECTORS
+from parser.parser_exceptions import *
+from parser.utils import Parser, ParserOutput, ParserImport
+from parser.components import COMPONENT_SELECTORS
 
 
 BAD_CHAR = r''.join(['/', ' ', '\t', '\n', ';', '#', '+', '&'])
@@ -74,7 +74,7 @@ class PLParser(Parser):
         resource_id: id of the resource the file is located in
         user_id: id of the user asking for the parse
         get_location: functions used to translate a URI into an absolute path on the system
-        inherited: set indicating the inheritance chain that lead to this file being parsed
+        inherited: tuple indicating the chain of inheritances that lead to this file being parsed, used for detecting infinite loops
         """
         self.path = os.path.abspath(path)
         self.dir, self.filename = os.path.split(path)
@@ -256,9 +256,21 @@ class PLParser(Parser):
 
 
     def url_line_match(self, match):
+        """
+        Maps link to the given resource to corresponding key
+        """
+        #TODO: How is that supposed to work on Platon?
         """Not implemented"""
-        raise ParserNotImplementedError(self.path, self.__current_line, self.__line_number, 'Import from URL is not implemented currently')
-    
+        key = match.group('key')
+        path = self.get_path(match.group('file'))
+        try:
+            namespace, nkey = get_namespace(self.output.data, key.split('.'))
+        except TypeError:
+            raise ParserSemanticError(self.path, self.__current_line, self.__line_number, f'{key} does not correspond to a valid namespace')
+        if nkey in namespace:
+            self.output.warnings.append(f'Overwriting existing value {namespace[nkey]} at key {nkey}')
+        namespace[nkey] = path
+
 
     def component_line_match(self, match):
         """
@@ -307,8 +319,8 @@ class PLParser(Parser):
         except TypeError:
             raise ParserSemanticError(self.path, current_line, line_number, f'{key} does not correspond to a valid namespace')
         if nkey in namespace:
-            self.output.warnings.append(f'Overwriting existing value {namespace[nkey]} at key {nkey}')
-        if key_must_exist and key not in namespace: 
+            self.output.warnings.append(f'Overwriting existing value at key "{key}"')
+        if key_must_exist and nkey not in namespace: 
             raise ParserSemanticError(self.path, current_line, line_number, f'{key} does not already exist')
         try:
             value = literal_eval(expr)
@@ -340,5 +352,5 @@ def get_namespace(d: dict, keys: List[str]) -> Tuple[dict, str]:
 
 
 def get_parser() -> ParserImport:
-    """ Used to dynamicaly add parser to the loader"""
+    """Used to dynamically add parser to the loader"""
     return ParserImport(PLParser, 'pl', ('pl',))
