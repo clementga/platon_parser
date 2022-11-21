@@ -101,6 +101,9 @@ class PLParser(Parser):
             self.__current_line = line
             self.parse_line(line)
             self.__line_number += 1
+        
+        if self.__multiline.ongoing:
+            raise ParserSyntaxError(self.path, self.__current_line, self.__line_number, 'Multiline wasn\'t closed')
 
         if self.check_mandatory_keys:
             for key in MANDATORY_KEYS:
@@ -344,9 +347,11 @@ def get_namespace(d: dict, keys: List[str]) -> Tuple[dict, str]:
     Raises TypeError if one of the namespaces is not a dictionary
     """
     for key in keys[:-1]:
+        if not key: raise TypeError(f'key cannot be empty')
         if type(d) != dict: raise TypeError(f'{d} is not a dictionary')
         if key not in d: d[key] = {}
         d = d[key]
+    if not keys[-1]: raise TypeError(f'key cannot be empty')
     if type(d) != dict: raise TypeError(f'{d} is not a dictionary')
     return d, keys[-1]
 

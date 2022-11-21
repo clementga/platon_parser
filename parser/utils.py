@@ -8,8 +8,10 @@ import os.path
 def base_get_location(path_to_resolve: str, local_path: str, resource_id: int, user_id: int) -> str:
     """Simple get_location function, only manages "classic" absolute and relative paths"""
     if os.path.isabs(path_to_resolve):
-        return path_to_resolve
-    return os.path.abspath(os.path.join(local_path, path_to_resolve))
+        path = path_to_resolve
+    else:
+        path = os.path.abspath(os.path.join(local_path, path_to_resolve))
+    return path if os.path.exists(path) else ''
 
 
 class Parser(ABC):
