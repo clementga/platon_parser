@@ -2,7 +2,7 @@ from dataclasses import asdict
 import json
 
 from parser import parse_file
-from utils import base_get_location
+from utils.utils import base_get_location
 
 
 class SetEncoder(json.JSONEncoder):
@@ -17,4 +17,3 @@ output = parse_file(testpath, 0, 0, base_get_location)
 
 
 print(json.dumps(asdict(output), indent=2, cls=SetEncoder))
-

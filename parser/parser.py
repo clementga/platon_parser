@@ -5,8 +5,8 @@ import logging
 from functools import lru_cache
 from os.path import splitext
 
-from utils import ParserImport, ParserOutput, base_get_location
-from parser_exceptions import *
+from utils.utils import ParserImport, ParserOutput, base_get_location
+from utils.parser_exceptions import *
 
 logger = logging.getLogger(__name__)
 
