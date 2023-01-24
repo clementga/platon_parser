@@ -2,7 +2,7 @@ from dataclasses import asdict
 import json
 
 from parser import parse_file
-from utils.utils import base_get_location
+from utils import base_get_location
 
 
 class SetEncoder(json.JSONEncoder):
@@ -11,7 +11,7 @@ class SetEncoder(json.JSONEncoder):
             return list(obj)
         return json.JSONEncoder.default(self, obj)
 
-testpath = 'test/blah.pl'
+testpath = 'test/test.pl'
 
 output = parse_file(testpath, 0, 0, base_get_location)
 

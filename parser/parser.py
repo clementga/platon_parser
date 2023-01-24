@@ -5,8 +5,8 @@ import logging
 from functools import lru_cache
 from os.path import splitext
 
-from utils.utils import ParserImport, ParserOutput, base_get_location
-from utils.parser_exceptions import *
+from utils import ParserImport, ParserOutput, base_get_location
+from parser_exceptions import *
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def get_parsers(parsers_root: str) -> Dict[str, ParserImport]:
     return parsers
 
 
-def parse_file(path: str, resource_id: int, user_id: int, get_location: Callable[[str, str, int, int], str]) -> Union[ParserOutput, None]:
+def parse_file(path: str, resource_id: int, user_id: int, get_location: Callable[[str, str, int, int], str]) -> ParserOutput:
     """Parses a file and returns the output"""
     parsers = get_parsers(PARSERS_ROOT)
     extension = os.path.basename(path).split('.')[-1]

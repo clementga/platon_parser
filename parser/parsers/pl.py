@@ -11,9 +11,9 @@ from typing import List, Tuple, Callable, Any, Dict
 from ast import literal_eval
 from dataclasses import dataclass
 
-from utils.parser_exceptions import *
-from utils.utils import Parser, ParserOutput, ParserImport
-from utils.components import COMPONENT_SELECTORS
+from parser_exceptions import *
+from utils import Parser, ParserOutput, ParserImport
+from components import COMPONENT_SELECTORS
 
 
 BAD_CHAR = r''.join(['/', ' ', '\t', '\n', ';', '#', '+', '&'])
