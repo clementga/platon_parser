@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 PARSERS_ROOT = os.path.join(os.path.dirname(__file__), '../parsers')
 
 def load_parser_from_module(path: str):
-    """Loads a parser from a given file in a given module
+    """Loads a parser from a path
     Calls the get_parser() function in the module to so"""
     filename = os.path.basename(path)
     module_name = os.path.splitext(filename)[0]
@@ -58,7 +58,3 @@ def parse_file(path: str, resource_id: int, user_id: int, get_location: Callable
     parser = parsers[extension].parser(path, resource_id, user_id, get_location)
     output = parser.parse()
     return output
-
-
-if __name__ == '__main__':
-    print(parse_file('test/test.pl', 0, 0, base_get_location))
