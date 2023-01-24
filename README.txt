@@ -1,3 +1,5 @@
+Parser for Platon
+
 Must be installed with pip to run properly with command
 pip install -e .
 
