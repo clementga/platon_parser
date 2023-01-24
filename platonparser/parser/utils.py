@@ -4,12 +4,12 @@ from typing import Any, Dict, List, Set, Tuple, Callable
 from abc import ABC, abstractmethod
 import os.path
 
-def base_get_location(path_to_resolve: str, local_path: str, resource_id: int, user_id: int) -> str:
-    """Simple get_location function, only manages "classic" absolute and relative paths"""
-    if os.path.isabs(path_to_resolve):
-        path = path_to_resolve
+def base_get_location(uri: str, working_directory: str, resource_id: int, circle_id: int) -> str:
+    """Simple get_location function, URIs are simple file paths, nothing else"""
+    if os.path.isabs(uri):
+        path = uri
     else:
-        path = os.path.abspath(os.path.join(local_path, path_to_resolve))
+        path = os.path.abspath(os.path.join(working_directory, uri))
     return path if os.path.exists(path) else ''
 
 
@@ -32,7 +32,7 @@ class ParserOutput:
     # Metadata
     path: str
     resource_id: int
-    user_id: int
+    circle_id: int
     format: str
     dependencies: Set[Tuple[str, str]] = field(default_factory=set) # Tuples (path, alias)
     comments: List[str] = field(default_factory=list)

@@ -65,25 +65,25 @@ class PLParser(Parser):
         starting_line_number: int = 0
 
 
-    def __init__(self, path: str, resource_id: int, user_id: int, get_location: Callable[[str, str, int, int], str], 
+    def __init__(self, path: str, resource_id: int, circle_id: int, get_location: Callable[[str, str, int, int], str], 
                  inherited=tuple(), check_mandatory_keys=True):
         """
         Initializes PLParser instance
 
         path: path to the file being parsed
         resource_id: id of the resource the file is located in
-        user_id: id of the user asking for the parse
+        circle_id: id of the circle the file is located in
         get_location: functions used to translate a URI into an absolute path on the system
         inherited: tuple indicating the chain of inheritances that lead to this file being parsed, used for detecting infinite loops
         """
         self.path = os.path.abspath(path)
         self.dir, self.filename = os.path.split(path)
         self.resource_id = resource_id
-        self.user_id = user_id
+        self.circle_id = circle_id
         self.get_location = get_location
         self.inherited = inherited + (self.path,)
         self.check_mandatory_keys = check_mandatory_keys
-        self.output = ParserOutput(path, resource_id, user_id, 'pl')
+        self.output = ParserOutput(path, resource_id, circle_id, 'pl')
 
         self.__current_line = ''
         self.__line_number = 1
@@ -228,7 +228,8 @@ class PLParser(Parser):
         if path in self.inherited:
             raise ParserInheritanceLoopError(self.path, self.inherited)
         
-        parser = PLParser(path, self.resource_id, self.user_id, self.get_location, self.inherited, check_mandatory_keys=False)
+        # TODO: needs to be ressource and circle id of the file to parse, not the one being parsed
+        parser = PLParser(path, self.resource_id, self.circle_id, self.get_location, self.inherited, check_mandatory_keys=False)
         output = parser.parse()
         self.output.merge_output(output)
 
@@ -334,7 +335,7 @@ class PLParser(Parser):
 
     def get_path(self, path: str):
         """Finds real path to a file given pl path"""
-        path = self.get_location(path, self.dir, self.resource_id, self.user_id)
+        path = self.get_location(path, self.dir, self.resource_id, self.circle_id)
         if not path: raise ParserFileNotFound(self.path, self.__current_line, self.__line_number, 'File path could not be resolved')
         return path
   
