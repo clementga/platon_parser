@@ -1,22 +1,27 @@
 from typing import Dict, Callable, Union
 import os
-import importlib
+import sys
+import os.path
+import importlib.util
 import logging
 from functools import lru_cache
-from os.path import splitext
 
-from utils import ParserImport, ParserOutput, base_get_location
-from parser_exceptions import *
+from platonparser.parser.utils import ParserImport, ParserOutput, base_get_location
+from platonparser.parser.parser_exceptions import *
 
 logger = logging.getLogger(__name__)
 
-PARSERS_ROOT = os.path.join(os.path.dirname(__file__), 'parsers')
+PARSERS_ROOT = os.path.join(os.path.dirname(__file__), '../parsers')
 
-def load_parser_from_module(filename: str, modulename: str):
+def load_parser_from_module(path: str):
     """Loads a parser from a given file in a given module
     Calls the get_parser() function in the module to so"""
-    modfilename = modulename + '.' + splitext(filename)[0]
-    module = importlib.import_module(modfilename)
+    filename = os.path.basename(path)
+    module_name = os.path.splitext(filename)[0]
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
     try:
         parser_import = module.get_parser()
         if type(parser_import) != ParserImport:
@@ -35,7 +40,7 @@ def get_parsers(parsers_root: str) -> Dict[str, ParserImport]:
     parsers = {}
     filenames = [filename for filename in os.listdir(parsers_root) if filename.endswith('.py') and '__' not in filename]
     for filename in filenames:
-        parser_import = load_parser_from_module(filename, os.path.basename(parsers_root))
+        parser_import = load_parser_from_module(os.path.join(parsers_root, filename))
         if parser_import is not None:
             for ext in parser_import.extensions:
                 if ext in parsers:

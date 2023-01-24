@@ -1,11 +1,10 @@
 import os, sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../parser/')))
 
 import unittest
 
-import parsers.pl as pl
-import utils.parser_exceptions as exceptions
-from utils.utils import base_get_location
+import platonparser.parsers.pl as pl
+import platonparser.parser.parser_exceptions as exceptions
+from platonparser.parser.utils import base_get_location
 
 class TestPLParser(unittest.TestCase):
     def setUp(self):

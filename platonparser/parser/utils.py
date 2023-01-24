@@ -2,7 +2,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Set, Tuple, Callable
 from abc import ABC, abstractmethod
-
 import os.path
 
 def base_get_location(path_to_resolve: str, local_path: str, resource_id: int, user_id: int) -> str:

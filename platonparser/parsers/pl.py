@@ -1,7 +1,7 @@
 # Trick to allow import of python modules in parent directory, useful if running this file directly
-if __name__ == '__main__':
-    import sys, os
-    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+# if __name__ == '__main__':
+#     import sys, os
+#     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Actual imports begin here
 import re
@@ -11,9 +11,9 @@ from typing import List, Tuple, Callable, Any, Dict
 from ast import literal_eval
 from dataclasses import dataclass
 
-from parser_exceptions import *
-from utils import Parser, ParserOutput, ParserImport
-from components import COMPONENT_SELECTORS
+from platonparser.parser.parser_exceptions import *
+from platonparser.parser.utils import Parser, ParserOutput, ParserImport
+from platonparser.parser.components import COMPONENT_SELECTORS
 
 
 BAD_CHAR = r''.join(['/', ' ', '\t', '\n', ';', '#', '+', '&'])

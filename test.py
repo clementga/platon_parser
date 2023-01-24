@@ -1,8 +1,8 @@
 from dataclasses import asdict
 import json
 
-from parser import parse_file
-from utils import base_get_location
+from platonparser.parser.parser import parse_file
+from platonparser.parser.utils import base_get_location
 
 
 class SetEncoder(json.JSONEncoder):
