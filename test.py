@@ -12,8 +12,7 @@ class SetEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 testpath = 'test/test.pl'
-
-output = parse_file(testpath, 0, 0, base_get_location)
-
+with open(testpath, 'r') as file:
+    output = parse_file(file, testpath, 0, 0, base_get_location)
 
 print(json.dumps(asdict(output), indent=2, cls=SetEncoder))

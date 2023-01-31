@@ -2,22 +2,34 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Set, Tuple, Callable
 from abc import ABC, abstractmethod
+from io import StringIO
 import os.path
 
-def base_get_location(uri: str, working_directory: str, resource_id: int, circle_id: int) -> str:
+def base_get_location(uri: str, working_directory: str, resource_id: int, circle_id: int) -> LocationResult:
     """Simple get_location function, URIs are simple file paths, nothing else"""
+    result = LocationResult()
     if os.path.isabs(uri):
-        path = uri
+        result.path = uri
     else:
-        path = os.path.abspath(os.path.join(working_directory, uri))
-    return path if os.path.exists(path) else ''
-
+        result.path = os.path.abspath(os.path.join(working_directory, uri))
+    if not os.path.exists(result.path): return None
+    result.file_handle = open(result.path, 'r')
+    return result
 
 class Parser(ABC):
     """Abstract class representing a parser"""
     @abstractmethod
-    def __init__(self, path: str, resource_id: int, user_id: int, get_location: Callable[[str, str, int, int], str], 
+    def __init__(self, file_handle: StringIO, path: str, resource_id: int, circle_id: int, get_location: Callable[[str, str, int, int], str], 
                  inherited=tuple(), check_mandatory_keys=True):
+        """
+        file_handle: TextIO object for reading the file
+        path: path to the file, used as a unique identifier for things such as logging, or inheritance loop detection
+        resource_id: id of the resource the file is in
+        circle_id: id of the circle the file is in
+        get_location: method used to obtain the file corresponding to an URI
+        inherited: tuple containing the chain of inheritance that lead here
+        check_mandatory_keys: boolean indicating if the keys that must be defined in a final PL file should be checked for or not
+        """
         pass
 
     @abstractmethod
@@ -46,6 +58,14 @@ class ParserOutput:
         self.comments.extend(output.comments)
         self.warnings.extend(output.warnings)
         recursive_update(self.data, output.data)
+
+@dataclass
+class LocationResult:
+    """Represents the output of a get_location function"""
+    file_handle: StringIO = None
+    path: str = None
+    resource_id: int = -1
+    circle_id: int = -1
 
 
 def recursive_update(curr_dict: dict, merge_dict: dict):

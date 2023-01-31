@@ -10,9 +10,10 @@ import os.path
 from typing import List, Tuple, Callable, Any, Dict
 from ast import literal_eval
 from dataclasses import dataclass
+from io import StringIO
 
 from platonparser.parser.parser_exceptions import *
-from platonparser.parser.utils import Parser, ParserOutput, ParserImport
+from platonparser.parser.utils import Parser, ParserOutput, ParserImport, LocationResult
 from platonparser.parser.components import COMPONENT_SELECTORS
 
 
@@ -65,17 +66,10 @@ class PLParser(Parser):
         starting_line_number: int = 0
 
 
-    def __init__(self, path: str, resource_id: int, circle_id: int, get_location: Callable[[str, str, int, int], str], 
+    def __init__(self, file_handle: StringIO, path: str, resource_id: int, circle_id: int, get_location: Callable[[str, str, int, int], LocationResult], 
                  inherited=tuple(), check_mandatory_keys=True):
-        """
-        Initializes PLParser instance
-
-        path: path to the file being parsed
-        resource_id: id of the resource the file is located in
-        circle_id: id of the circle the file is located in
-        get_location: functions used to translate a URI into an absolute path on the system
-        inherited: tuple indicating the chain of inheritances that lead to this file being parsed, used for detecting infinite loops
-        """
+        """Initializes PLParser instance"""
+        self.file_handle = file_handle
         self.path = os.path.abspath(path)
         self.dir, self.filename = os.path.split(path)
         self.resource_id = resource_id
@@ -94,10 +88,7 @@ class PLParser(Parser):
         """Parses the file and returns the corresponding output"""
 
         # Read all file into RAM to avoid having too many file descriptors open during recursive parsing
-        with open(self.path, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-
-        for line in lines:
+        for line in self.file_handle:
             self.__current_line = line
             self.parse_line(line)
             self.__line_number += 1
@@ -224,14 +215,15 @@ class PLParser(Parser):
         """
         Inheritance
         """
-        path = self.get_path(match.group('file'))
-        if path in self.inherited:
+        location = self.call_get_location(match.group('file'))
+        if location in self.inherited:
             raise ParserInheritanceLoopError(self.path, self.inherited)
         
-        # TODO: needs to be ressource and circle id of the file to parse, not the one being parsed
-        parser = PLParser(path, self.resource_id, self.circle_id, self.get_location, self.inherited, check_mandatory_keys=False)
+        parser = PLParser(location.file_handle, location.path, location.resource_id, location.circle_id, 
+                          self.get_location, self.inherited, check_mandatory_keys=False)
         output = parser.parse()
         self.output.merge_output(output)
+        location.file_handle.close()
 
         
     def from_file_line_match(self, match):
@@ -240,23 +232,25 @@ class PLParser(Parser):
         """
         key = match.group('key')
         op = match.group('operator')
-        path = self.get_path(match.group('file'))
+        location = self.call_get_location(match.group('file'))
 
-        with open(path, 'r') as file:
-            value = file.read()
-            if op == '=@':
-                self.apply_expression_to_key(key, value, map_value)
-            elif op == '%@':
-                try:
-                    self.apply_expression_to_key(key, json.loads(value), map_value)
-                except json.decoder.JSONDecodeError:
-                    raise ParserSyntaxError(self.path, self.__current_line, self.__line_number, 'File does not correspond to a valid JSON format.')
-            elif op in ('+=@', '+@'):
-                self.apply_expression_to_key(key, value, append_value, key_must_exist=True)
-            elif op in ('-=@', '-@'):
-                self.apply_expression_to_key(key, value, prepend_value, key_must_exist=True)
-            else:
-                raise AssertionError
+        file = location.file_handle
+
+        value = file.read()
+        if op == '=@':
+            self.apply_expression_to_key(key, value, map_value)
+        elif op == '%@':
+            try:
+                self.apply_expression_to_key(key, json.loads(value), map_value)
+            except json.decoder.JSONDecodeError:
+                raise ParserSyntaxError(self.path, self.__current_line, self.__line_number, 'File does not correspond to a valid JSON format.')
+        elif op in ('+=@', '+@'):
+            self.apply_expression_to_key(key, value, append_value, key_must_exist=True)
+        elif op in ('-=@', '-@'):
+            self.apply_expression_to_key(key, value, prepend_value, key_must_exist=True)
+        else:
+            raise AssertionError
+        file.close()
 
 
     def url_line_match(self, match):
@@ -264,16 +258,16 @@ class PLParser(Parser):
         Maps link to the given resource to corresponding key
         """
         #TODO: How is that supposed to work on Platon?
-        """Not implemented"""
         key = match.group('key')
-        path = self.get_path(match.group('file'))
+        location = self.call_get_location(match.group('file'))
         try:
             namespace, nkey = get_namespace(self.output.data, key.split('.'))
         except TypeError:
             raise ParserSemanticError(self.path, self.__current_line, self.__line_number, f'{key} does not correspond to a valid namespace')
         if nkey in namespace:
             self.output.warnings.append(f'Overwriting existing value {namespace[nkey]} at key {nkey}')
-        namespace[nkey] = path
+        namespace[nkey] = location.path
+        location.file_handle.close()
 
 
     def component_line_match(self, match):
@@ -302,10 +296,11 @@ class PLParser(Parser):
         """
         Adds a file to the dependencies to load in the sandbox environnement
         """
-        path = self.get_path(match.group('file'))
+        location = self.call_get_location(match.group('file'))
 
-        alias = match.group('alias') or os.path.basename(path)
-        self.output.dependencies.add((path, alias))
+        alias = match.group('alias') or os.path.basename(location.path)
+        self.output.dependencies.add((location.path, alias))
+        location.file_handle.close()
 
 
     def apply_expression_to_key(self, key: str, expr: str, apply: Callable[[Dict[str, Any], str, Any], None], key_must_exist:bool=False):
@@ -333,11 +328,11 @@ class PLParser(Parser):
         apply(namespace, nkey, value)
 
 
-    def get_path(self, path: str):
+    def call_get_location(self, URI: str):
         """Finds real path to a file given pl path"""
-        path = self.get_location(path, self.dir, self.resource_id, self.circle_id)
-        if not path: raise ParserFileNotFound(self.path, self.__current_line, self.__line_number, 'File path could not be resolved')
-        return path
+        result = self.get_location(URI, self.dir, self.resource_id, self.circle_id)
+        if not result: raise ParserFileNotFound(self.path, self.__current_line, self.__line_number, 'URIcould not be resolved')
+        return result
   
 
 def get_namespace(d: dict, keys: List[str]) -> Tuple[dict, str]:
