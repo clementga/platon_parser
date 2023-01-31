@@ -50,12 +50,12 @@ def get_parsers(parsers_root: str) -> Dict[str, ParserImport]:
     return parsers
 
 
-def parse_file(file_handle: StringIO, path: str, resource_id: int, user_id: int, get_location: Callable[[str, str, int, int], str]) -> ParserOutput:
+def parse_file(file: bytes, path: FullPath, circle_id: int, get_location: Callable[[str, str, int, int], str]) -> ParserOutput:
     """Parses a file and returns the output"""
     parsers = get_parsers(PARSERS_ROOT)
-    extension = os.path.basename(path).split('.')[-1]
+    extension = os.path.basename(path.path).split('.')[-1]
     if extension not in parsers:
         raise NoParserError(path, extension)
-    parser = parsers[extension].parser(file_handle, path, resource_id, user_id, get_location)
+    parser = parsers[extension].parser(file, path, circle_id, get_location)
     output = parser.parse()
     return output

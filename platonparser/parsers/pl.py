@@ -10,10 +10,9 @@ import os.path
 from typing import List, Tuple, Callable, Any, Dict
 from ast import literal_eval
 from dataclasses import dataclass
-from io import StringIO
 
 from platonparser.parser.parser_exceptions import *
-from platonparser.parser.utils import Parser, ParserOutput, ParserImport, LocationResult
+from platonparser.parser.utils import Parser, ParserOutput, ParserImport, LocationResult, FullPath
 from platonparser.parser.components import COMPONENT_SELECTORS
 
 
@@ -66,18 +65,18 @@ class PLParser(Parser):
         starting_line_number: int = 0
 
 
-    def __init__(self, file_handle: StringIO, path: str, resource_id: int, circle_id: int, get_location: Callable[[str, str, int, int], LocationResult], 
+    def __init__(self, file: bytes, path: FullPath, circle_id: int, get_location: Callable[[str, str, int, int], LocationResult], 
                  inherited=tuple(), check_mandatory_keys=True):
         """Initializes PLParser instance"""
-        self.file_handle = file_handle
-        self.path = os.path.abspath(path)
-        self.dir, self.filename = os.path.split(path)
-        self.resource_id = resource_id
+        self.file = file
+        self.path = path
+        self.dir = os.path.dirname(path.path)
+        self.resource_id = path.resource_id
         self.circle_id = circle_id
         self.get_location = get_location
         self.inherited = inherited + (self.path,)
         self.check_mandatory_keys = check_mandatory_keys
-        self.output = ParserOutput(path, resource_id, circle_id, 'pl')
+        self.output = ParserOutput(path, self.resource_id, circle_id, 'pl')
 
         self.__current_line = ''
         self.__line_number = 1
@@ -88,7 +87,8 @@ class PLParser(Parser):
         """Parses the file and returns the corresponding output"""
 
         # Read all file into RAM to avoid having too many file descriptors open during recursive parsing
-        for line in self.file_handle:
+        contents = self.file.decode(encoding='utf-8')
+        for line in contents.split('\n'):
             self.__current_line = line
             self.parse_line(line)
             self.__line_number += 1
@@ -219,11 +219,9 @@ class PLParser(Parser):
         if location in self.inherited:
             raise ParserInheritanceLoopError(self.path, self.inherited)
         
-        parser = PLParser(location.file_handle, location.path, location.resource_id, location.circle_id, 
-                          self.get_location, self.inherited, check_mandatory_keys=False)
+        parser = PLParser(location.file, location.path, location.circle_id, self.get_location, self.inherited, check_mandatory_keys=False)
         output = parser.parse()
         self.output.merge_output(output)
-        location.file_handle.close()
 
         
     def from_file_line_match(self, match):
@@ -234,9 +232,7 @@ class PLParser(Parser):
         op = match.group('operator')
         location = self.call_get_location(match.group('file'))
 
-        file = location.file_handle
-
-        value = file.read()
+        value = location.file.decode(encoding='utf-8')
         if op == '=@':
             self.apply_expression_to_key(key, value, map_value)
         elif op == '%@':
@@ -250,7 +246,6 @@ class PLParser(Parser):
             self.apply_expression_to_key(key, value, prepend_value, key_must_exist=True)
         else:
             raise AssertionError
-        file.close()
 
 
     def url_line_match(self, match):
@@ -266,8 +261,7 @@ class PLParser(Parser):
             raise ParserSemanticError(self.path, self.__current_line, self.__line_number, f'{key} does not correspond to a valid namespace')
         if nkey in namespace:
             self.output.warnings.append(f'Overwriting existing value {namespace[nkey]} at key {nkey}')
-        namespace[nkey] = location.path
-        location.file_handle.close()
+        namespace[nkey] = location.path.path
 
 
     def component_line_match(self, match):
@@ -298,9 +292,8 @@ class PLParser(Parser):
         """
         location = self.call_get_location(match.group('file'))
 
-        alias = match.group('alias') or os.path.basename(location.path)
+        alias = match.group('alias') or os.path.basename(location.path.path)
         self.output.dependencies.add((location.path, alias))
-        location.file_handle.close()
 
 
     def apply_expression_to_key(self, key: str, expr: str, apply: Callable[[Dict[str, Any], str, Any], None], key_must_exist:bool=False):

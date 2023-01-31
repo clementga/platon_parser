@@ -1,3 +1,5 @@
+from platonparser.parser.utils import FullPath
+
 class ParserException(Exception):
     """Abstract exception used to subtype all parser exceptions"""
     pass
@@ -5,7 +7,7 @@ class ParserException(Exception):
 
 class ParserExceptionLine(ParserException):
     """Exception indicating the file, line and line number where the parsing exception happened"""
-    def __init__(self, path: str, line: str, line_number: int, message: str):
+    def __init__(self, path: FullPath, line: str, line_number: int, message: str):
         self.path = path
         self.line = line.strip()
         self.line_number = line_number
@@ -17,37 +19,37 @@ class ParserExceptionLine(ParserException):
 
 class ParserSyntaxError(ParserExceptionLine):
     """Represents a syntax error in the parsed file"""
-    def __init__(self, path: str, line: str, line_number: int, message: str = 'Syntax error'):
+    def __init__(self, path: FullPath, line: str, line_number: int, message: str = 'Syntax error'):
         super().__init__(path, line, line_number, message)
 
 
 class ParserSemanticError(ParserExceptionLine):
     """Represents a semantic error in the parsed file"""
-    def __init__(self, path: str, line: str, line_number: int, message: str = 'Semantic error'):
+    def __init__(self, path: FullPath, line: str, line_number: int, message: str = 'Semantic error'):
         super().__init__(path, line, line_number, message)
 
 
 class ParserNotImplementedError(ParserExceptionLine):
     """Represents a non implemented feature in a parsed file"""
-    def __init__(self, path: str, line: str, line_number: int, message: str = 'Not implemented error'):
+    def __init__(self, path: FullPath, line: str, line_number: int, message: str = 'Not implemented error'):
         super().__init__(path, line, line_number, message)
 
 
 class ParserFileNotFound(ParserExceptionLine):
     """Represents failure to resolve to a file path in a parsed file"""
-    def __init__(self, path: str, line: str, line_number: int, message: str = 'File not found'):
+    def __init__(self, path: FullPath, line: str, line_number: int, message: str = 'File not found'):
         super().__init__(path, line, line_number, message)
 
 
 class ParserComponentNotFound(ParserExceptionLine):
     """Represents failure to find a component"""
-    def __init__(self, path: str, line: str, line_number: int, message: str = 'Component not found'):
+    def __init__(self, path: FullPath, line: str, line_number: int, message: str = 'Component not found'):
         super().__init__(path, line, line_number, message)
 
 
 class ParserInheritanceLoopError(ParserException):
     """Represents error caused by an infinite inheritance loop"""
-    def __init__(self, path: str, inheritances: tuple):
+    def __init__(self, path: FullPath, inheritances: tuple):
         self.inheritances = inheritances
         self.path = path
     
@@ -56,7 +58,7 @@ class ParserInheritanceLoopError(ParserException):
     
 class ParserMissingKey(ParserException):
     """Represents missing mandatory key"""
-    def __init__(self, path: str, key: str):
+    def __init__(self, path: FullPath, key: str):
         self.path = path
         self.key = key
     
@@ -66,7 +68,7 @@ class ParserMissingKey(ParserException):
 
 class NoParserError(ParserException):
     """Represents an extension that does not have an appropriate parser"""
-    def __init__(self, path: str, extension: str):
+    def __init__(self, path: FullPath, extension: str):
         self.extension = extension
         self.path = path
     
