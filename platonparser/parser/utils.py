@@ -15,7 +15,7 @@ def base_get_location(uri: str, working_directory: str, resource_id: int, circle
     if not os.path.exists(path): return None
     with open(path, 'rb') as file:
         contents = file.read()
-    return LocationResult(contents, path, -1, -1)
+    return LocationResult(contents, FullPath(-1, path), -1)
 
 # FullPath represents a full path, composed of two segments: the resource id, and the relative path inside that resource.
 FullPath = namedtuple('FullPath', ['resource_id', 'path'])
@@ -25,7 +25,6 @@ class LocationResult:
     """Represents the output of a get_location function"""
     file: bytes
     path: FullPath
-    resource_id: int
     circle_id: int
 
 class Parser(ABC):

@@ -70,13 +70,13 @@ class PLParser(Parser):
         """Initializes PLParser instance"""
         self.file = file
         self.path = path
-        self.dir = os.path.dirname(path.path)
+        self.dir, self.filename = os.path.split(path.path)
         self.resource_id = path.resource_id
         self.circle_id = circle_id
         self.get_location = get_location
         self.inherited = inherited + (self.path,)
         self.check_mandatory_keys = check_mandatory_keys
-        self.output = ParserOutput(path, self.resource_id, circle_id, 'pl')
+        self.output = ParserOutput(path, circle_id, 'pl')
 
         self.__current_line = ''
         self.__line_number = 1
