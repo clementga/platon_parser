@@ -1,13 +1,12 @@
-from typing import Dict, Callable, Union
+from typing import Dict, Callable
 import os
 import sys
 import os.path
 import importlib.util
 import logging
 from functools import lru_cache
-from io import StringIO
 
-from platonparser.parser.utils import ParserImport, ParserOutput, base_get_location
+from platonparser.parser.utils import ParserImport, ParserOutput
 from platonparser.parser.parser_exceptions import *
 
 logger = logging.getLogger(__name__)

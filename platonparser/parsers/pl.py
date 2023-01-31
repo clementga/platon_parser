@@ -1,9 +1,3 @@
-# Trick to allow import of python modules in parent directory, useful if running this file directly
-# if __name__ == '__main__':
-#     import sys, os
-#     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
-# Actual imports begin here
 import re
 import json
 import os.path
