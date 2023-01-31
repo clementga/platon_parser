@@ -74,7 +74,7 @@ class PLParser(Parser):
         self.resource_id = path.resource_id
         self.circle_id = circle_id
         self.get_location = get_location
-        self.inherited = inherited + (self.path,)
+        self.inherited = inherited + (path,)
         self.check_mandatory_keys = check_mandatory_keys
         self.output = ParserOutput(path, circle_id, 'pl')
 
@@ -86,7 +86,6 @@ class PLParser(Parser):
     def parse(self) -> ParserOutput:
         """Parses the file and returns the corresponding output"""
 
-        # Read all file into RAM to avoid having too many file descriptors open during recursive parsing
         contents = self.file.decode(encoding='utf-8')
         for line in contents.split('\n'):
             self.__current_line = line
@@ -113,7 +112,7 @@ class PLParser(Parser):
             if END_MULTI_LINE.match(line):
                 self.end_multi_line()
             else:
-                self.__multiline.current_value += line[:-1] 
+                self.__multiline.current_value += line
         elif EXTENDS_LINE.match(line):
             self.extends_line_match(EXTENDS_LINE.match(line))
         elif FROM_FILE_LINE.match(line):
@@ -216,7 +215,7 @@ class PLParser(Parser):
         Inheritance
         """
         location = self.call_get_location(match.group('file'))
-        if location in self.inherited:
+        if location.path in self.inherited:
             raise ParserInheritanceLoopError(self.path, self.inherited)
         
         parser = PLParser(location.file, location.path, location.circle_id, self.get_location, self.inherited, check_mandatory_keys=False)
