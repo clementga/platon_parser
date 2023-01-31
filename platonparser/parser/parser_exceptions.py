@@ -5,6 +5,13 @@ class ParserException(Exception):
     pass
 
 
+class ParserInvalidFile(ParserException):
+    def __init__(self, path: FullPath):
+        self.path = path
+    
+    def __str__(self):
+        return f'{self.path}: invalid file, could not be decoded'
+
 class ParserExceptionLine(ParserException):
     """Exception indicating the file, line and line number where the parsing exception happened"""
     def __init__(self, path: FullPath, line: str, line_number: int, message: str):
@@ -16,6 +23,10 @@ class ParserExceptionLine(ParserException):
     def __str__(self):
         return f'{self.path} (line {self.line_number}): {self.message} in "{self.line}"'
 
+
+class ParserInvalidFileLine(ParserExceptionLine):
+    def __init__(self, path: FullPath, line: str, line_number: int, message: str = 'Invalid file, cannot decode'):
+        super().__init__(path, line, line_number, message)
 
 class ParserSyntaxError(ParserExceptionLine):
     """Represents a syntax error in the parsed file"""

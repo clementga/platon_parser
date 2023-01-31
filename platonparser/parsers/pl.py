@@ -79,8 +79,11 @@ class PLParser(Parser):
 
     def parse(self) -> ParserOutput:
         """Parses the file and returns the corresponding output"""
+        try:
+            contents = self.file.decode(encoding='utf-8')
+        except UnicodeError:
+            raise ParserInvalidFile(self.path)
 
-        contents = self.file.decode(encoding='utf-8')
         for line in contents.split('\n'):
             self.__current_line = line
             self.parse_line(line)
@@ -225,7 +228,11 @@ class PLParser(Parser):
         op = match.group('operator')
         location = self.call_get_location(match.group('file'))
 
-        value = location.file.decode(encoding='utf-8')
+        try:
+            value = location.file.decode(encoding='utf-8')
+        except UnicodeError:
+            raise ParserInvalidFileLine(self.path, self.__current_line, self.__line_number)
+
         if op == '=@':
             self.apply_expression_to_key(key, value, map_value)
         elif op == '%@':
